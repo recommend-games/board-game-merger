@@ -63,7 +63,8 @@ select = ["ALL"]
 ignore = [
     "ANN",      # Type hints related, let mypy handle these.
     "D",        # Docstrings related, way too strict to our taste
-    ]
+    "ERA001",   # commented-out code is fine
+]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = [
