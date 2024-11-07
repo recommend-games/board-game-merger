@@ -48,6 +48,7 @@ pytest-github-actions-annotate-failures = "*"
 pytest-cov = "*"
 python-kacl = "*"
 ruff = ">=0.2.0"
+types-tqdm = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -66,6 +67,10 @@ ignore = [
     "ANN",      # Type hints related, let mypy handle these.
     "D",        # Docstrings related, way too strict to our taste
     "ERA001",   # commented-out code is fine
+    "TRY003",
+    "EM102",
+    "PLR0913",
+    "ISC001",
 ]
 
 [tool.ruff.lint.per-file-ignores]
