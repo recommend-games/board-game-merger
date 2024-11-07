@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 
+from board_game_merger.config import MergeConfig
 from board_game_merger.merge import merge_files
 from board_game_merger.schemas import (
     GAME_ITEM_SCHEMA,
@@ -45,13 +46,15 @@ def main() -> None:
         raise ValueError(f"Unknown item type: {item_type}")
 
     merge_files(
-        in_paths=f"feeds/bgg/{path}/",
-        schema=schema,
-        out_path=f"{item_type}s_merged.jl",
-        key_col=key_col,
-        latest_col=pl.col("scraped_at").str.to_datetime(time_zone="UTC"),
-        sort_fields=key_col,
-        fieldnames_exclude=fieldnames_exclude,
+        merge_config=MergeConfig(
+            in_paths=f"feeds/bgg/{path}/",
+            schema=schema,
+            out_path=f"{item_type}s_merged.jl",
+            key_col=key_col,
+            latest_col=pl.col("scraped_at").str.to_datetime(time_zone="UTC"),
+            sort_fields=key_col,
+            fieldnames_exclude=fieldnames_exclude,
+        ),
         drop_empty=True,
         sort_keys=True,
         progress_bar=True,

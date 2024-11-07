@@ -4,31 +4,21 @@ import json
 import logging
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING
 
 import polars as pl
 from tqdm import tqdm
 
 if TYPE_CHECKING:
-    from polars._typing import IntoExpr
+    from board_game_merger.config import MergeConfig
 
 LOGGER = logging.getLogger(__name__)
-PATH_LIKE = Union[str, Path]
 MAX_DISPLAY_ITEMS = 10
 
 
 def merge_files(
     *,
-    in_paths: PATH_LIKE | list[str] | list[Path],
-    schema: pl.Schema,
-    out_path: PATH_LIKE,
-    key_col: IntoExpr | list[IntoExpr],
-    latest_col: IntoExpr | list[IntoExpr],
-    latest_min: Any = None,
-    sort_fields: IntoExpr | list[IntoExpr] | None = None,
-    sort_descending: bool = False,
-    fieldnames_include: IntoExpr | list[IntoExpr] | None = None,
-    fieldnames_exclude: str | list[str] | None = None,
+    merge_config: MergeConfig,
     drop_empty: bool = False,
     sort_keys: bool = False,
     progress_bar: bool = False,
@@ -43,13 +33,20 @@ def merge_files(
     - For each row, remove empty fields and sort keys alphabetically
     """
 
-    if fieldnames_include is not None and fieldnames_exclude is not None:
+    if (
+        merge_config.fieldnames_include is not None
+        and merge_config.fieldnames_exclude is not None
+    ):
         msg = "Cannot specify both fieldnames_include and fieldnames_exclude"
         raise ValueError(msg)
 
-    in_paths_iter = in_paths if isinstance(in_paths, list) else [in_paths]
+    in_paths_iter = (
+        merge_config.in_paths
+        if isinstance(merge_config.in_paths, list)
+        else [merge_config.in_paths]
+    )
     in_paths = [Path(in_path).resolve() for in_path in in_paths_iter]
-    out_path = Path(out_path).resolve()
+    out_path = Path(merge_config.out_path).resolve()
 
     LOGGER.info(
         "Merging items from %s into <%s>",
@@ -58,19 +55,27 @@ def merge_files(
     )
     data = pl.scan_ndjson(
         source=in_paths,
-        schema=schema,
+        schema=merge_config.schema,
         batch_size=512,
         low_memory=True,
         rechunk=True,
         ignore_errors=True,
     )
 
-    latest_col = latest_col if isinstance(latest_col, list) else [latest_col]
-    if latest_min is not None:
-        LOGGER.info("Filtering out rows before <%s>", latest_min)
-        data = data.filter(latest_col[0] >= latest_min)
+    latest_col = (
+        merge_config.latest_col
+        if isinstance(merge_config.latest_col, list)
+        else [merge_config.latest_col]
+    )
+    if merge_config.latest_min is not None:
+        LOGGER.info("Filtering out rows before <%s>", merge_config.latest_min)
+        data = data.filter(latest_col[0] >= merge_config.latest_min)
 
-    key_col = key_col if isinstance(key_col, list) else [key_col]
+    key_col = (
+        merge_config.key_col
+        if isinstance(merge_config.key_col, list)
+        else [merge_config.key_col]
+    )
     key_col_dict = {f"__key__{i}": key for i, key in enumerate(key_col)}
 
     LOGGER.info("Merging rows with identical keys: %s", key_col)
@@ -83,20 +88,23 @@ def merge_files(
         .drop(key_col_dict.keys())
     )
 
-    if sort_fields is not None:
+    if merge_config.sort_fields is not None:
         LOGGER.info(
             "Sorting data by: %s (%s)",
-            sort_fields,
-            "descending" if sort_descending else "ascending",
+            merge_config.sort_fields,
+            "descending" if merge_config.sort_descending else "ascending",
         )
-        data = data.sort(sort_fields, descending=sort_descending)
+        data = data.sort(
+            merge_config.sort_fields,
+            descending=merge_config.sort_descending,
+        )
 
-    if fieldnames_include is not None:
-        LOGGER.info("Selecting fields: %s", fieldnames_include)
-        data = data.select(fieldnames_include)
-    elif fieldnames_exclude is not None:
-        LOGGER.info("Excluding fields: %s", fieldnames_exclude)
-        data = data.select(pl.exclude(fieldnames_exclude))
+    if merge_config.fieldnames_include is not None:
+        LOGGER.info("Selecting fields: %s", merge_config.fieldnames_include)
+        data = data.select(merge_config.fieldnames_include)
+    elif merge_config.fieldnames_exclude is not None:
+        LOGGER.info("Excluding fields: %s", merge_config.fieldnames_exclude)
+        data = data.select(pl.exclude(merge_config.fieldnames_exclude))
 
     LOGGER.info("Collecting results, this may take a while…")
     result = data.collect()
@@ -133,4 +141,5 @@ def merge_files(
                     row = {k: v for k, v in row.items() if v}
                 json.dump(row, out_file, sort_keys=sort_keys, separators=(",", ":"))
                 out_file.write("\n")
+
     LOGGER.info("Done.")
