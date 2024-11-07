@@ -1,3 +1,4 @@
+import argparse
 import logging
 import sys
 from typing import TYPE_CHECKING
@@ -18,27 +19,71 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 
-def main() -> None:
-    logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Merge board game data files")
 
-    item_type = sys.argv[1] if len(sys.argv) > 1 else "game"
+    parser.add_argument(
+        "site",
+        choices=["bgg"],
+        help="Site to merge data from",
+    )
+    parser.add_argument(
+        "--item-type",
+        "-t",
+        choices=["game", "rating", "user"],
+        default="game",
+        help="Type of item to merge",
+    )
+    parser.add_argument(
+        "--in-paths",
+        "-i",
+        nargs="+",
+        help="Paths to input files or directories",
+    )
+    parser.add_argument(
+        "--out-path",
+        "-o",
+        help="Path to output file",
+    )
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="Enable verbose logging",
+    )
+
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = _parse_args()
+
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        stream=sys.stdout,
+    )
+
+    if args.site == "bgg":
+        LOGGER.info("Merging data from BoardGameGeek")
+    else:
+        raise ValueError(f"Unknown site: {args.site}")
+
+    item_type = args.item_type
     LOGGER.info("Merging %ss", item_type)
 
     fieldnames_exclude = ["published_at", "scraped_at"]
 
     if item_type == "game":
-        path = "GameItem"
         schema = GAME_ITEM_SCHEMA
         key_col: IntoExpr | list[IntoExpr] = "bgg_id"
         fieldnames_exclude += ["updated_at"]
 
     elif item_type == "rating":
-        path = "RatingItem"
         schema = RATING_ITEM_SCHEMA
         key_col = [pl.col("bgg_user_name").str.to_lowercase(), "bgg_id"]
 
     elif item_type == "user":
-        path = "UserItem"
         schema = USER_ITEM_SCHEMA
         key_col = pl.col("bgg_user_name").str.to_lowercase()
 
@@ -47,9 +92,9 @@ def main() -> None:
 
     merge_files(
         merge_config=MergeConfig(
-            in_paths=f"feeds/bgg/{path}/",
             schema=schema,
-            out_path=f"{item_type}s_merged.jl",
+            in_paths=args.in_paths,
+            out_path=args.out_path,
             key_col=key_col,
             latest_col=pl.col("scraped_at").str.to_datetime(time_zone="UTC"),
             sort_fields=key_col,
