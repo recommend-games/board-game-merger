@@ -33,7 +33,9 @@ packages = [
 
 [tool.poetry.dependencies]
 python = ">=3.9.0, <4.0"
+
 polars = ">=1.0.0,<2.0.0"
+tqdm = "*"
 
 [tool.poetry.group.dev.dependencies]
 mkdocstrings = {version = ">=0.23", extras = ["python"]}
