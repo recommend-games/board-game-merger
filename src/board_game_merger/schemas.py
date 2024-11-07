@@ -166,3 +166,9 @@ RATING_ITEM_SCHEMA = pl.Schema(
         "scraped_at": pl.String,
     },
 )
+
+ITEM_TYPE_SCHEMA = {
+    "GameItem": GAME_ITEM_SCHEMA,
+    "UserItem": USER_ITEM_SCHEMA,
+    "RatingItem": RATING_ITEM_SCHEMA,
+}
