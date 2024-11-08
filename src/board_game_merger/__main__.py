@@ -19,8 +19,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--item-type",
         "-t",
-        choices=["game", "rating", "user"],
-        default="game",
+        choices=("GameItem", "RatingItem", "UserItem"),
+        default="GameItem",
         help="Type of item to merge",
     )
     parser.add_argument(
@@ -84,7 +84,7 @@ def main() -> None:
                 clean_results=args.clean_results,
                 latest_min_days=args.latest_min_days,
             ),
-            drop_empty=bool(args.clean_results),
+            drop_empty=True,
             sort_keys=bool(args.clean_results),
             progress_bar=bool(args.progress_bar),
         )

@@ -77,7 +77,9 @@ class MergeConfig:
             )
 
         else:
-            kwargs["out_path"] = out_path or (FEEDS_DIR / site / f"{now_str}-merged.jl")
+            kwargs["out_path"] = out_path or (
+                FEEDS_DIR / site / item / f"{now_str}-merged.jl"
+            )
 
         return cls(**kwargs)
 
