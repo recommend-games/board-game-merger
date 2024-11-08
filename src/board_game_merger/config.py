@@ -52,16 +52,18 @@ class MergeConfig:
         now = datetime.now(timezone.utc)
         now_str = now.strftime("%Y-%m-%dT%H-%M-%S")
 
-        kwargs["schema"] = schema or ITEM_TYPE_SCHEMA.get(item)
+        kwargs["schema"] = schema if schema is not None else ITEM_TYPE_SCHEMA.get(item)
 
         if not kwargs["schema"]:
             raise ValueError(f"Unknown item type: {item}")
 
         kwargs["in_paths"] = in_paths or (FEEDS_DIR / site / item)
 
-        kwargs["key_col"] = key_col or f"{site}_id"
-        kwargs["latest_col"] = latest_col or pl.col("scraped_at").str.to_datetime(
-            time_zone="UTC"
+        kwargs["key_col"] = key_col if key_col is not None else f"{site}_id"
+        kwargs["latest_col"] = (
+            latest_col
+            if latest_col is not None
+            else pl.col("scraped_at").str.to_datetime(time_zone="UTC")
         )
         if latest_min_days and latest_min_days > 0:
             kwargs.setdefault("latest_min", now - timedelta(days=latest_min_days))
@@ -121,7 +123,7 @@ class MergeConfig:
         if item == "UserItem":
             kwargs.setdefault("key_col", pl.col("bgg_user_name").str.to_lowercase())
             if clean_results:
-                kwargs.setdefault("fieldnames_exclude", ["published_at", "updated_at"])
+                kwargs.setdefault("fieldnames_exclude", ["published_at", "scraped_at"])
             return cls.with_defaults(
                 site="bgg",
                 item="UserItem",
@@ -135,7 +137,7 @@ class MergeConfig:
                 [pl.col("bgg_user_name").str.to_lowercase(), "bgg_id"],
             )
             if clean_results:
-                kwargs.setdefault("fieldnames_exclude", ["published_at", "updated_at"])
+                kwargs.setdefault("fieldnames_exclude", ["published_at", "scraped_at"])
             return cls.with_defaults(
                 site="bgg",
                 item="RatingItem",
