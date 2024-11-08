@@ -35,11 +35,16 @@ class MergeConfig:
     fieldnames_exclude: str | list[str] | None = None
 
     @classmethod
-    def global_defaults(
+    def with_defaults(  # noqa: PLR0913
         cls,
         site: str,
         *,
         item: Literal["GameItem", "UserItem", "RatingItem"] = "GameItem",
+        schema: pl.Schema | None = None,
+        in_paths: str | Path | list[str] | list[Path] | None = None,
+        out_path: str | Path | None = None,
+        key_col: IntoExpr | list[IntoExpr] | None = None,
+        latest_col: IntoExpr | list[IntoExpr] | None = None,
         clean_results: bool = False,
         latest_min_days: float | None = None,
         **kwargs: Any,
@@ -47,24 +52,24 @@ class MergeConfig:
         now = datetime.now(timezone.utc)
         now_str = now.strftime("%Y-%m-%dT%H-%M-%S")
 
-        schema = kwargs.get(item) or ITEM_TYPE_SCHEMA.get(item)
+        kwargs["schema"] = schema or ITEM_TYPE_SCHEMA.get(item)
 
-        if not schema:
+        if not kwargs["schema"]:
             raise ValueError(f"Unknown item type: {item}")
 
-        kwargs.setdefault("schema", schema)
-        kwargs.setdefault("in_paths", FEEDS_DIR / site / item)
+        kwargs["in_paths"] = in_paths or (FEEDS_DIR / site / item)
 
-        kwargs.setdefault("key_col", f"{site}_id")
-        kwargs.setdefault(
-            "latest_col",
-            pl.col("scraped_at").str.to_datetime(time_zone="UTC"),
+        kwargs["key_col"] = key_col or f"{site}_id"
+        kwargs["latest_col"] = latest_col or pl.col("scraped_at").str.to_datetime(
+            time_zone="UTC"
         )
         if latest_min_days and latest_min_days > 0:
             kwargs.setdefault("latest_min", now - timedelta(days=latest_min_days))
 
         if clean_results:
-            kwargs.setdefault("out_path", DATA_DIR / "scraped" / f"{site}_{item}.jl")
+            kwargs["out_path"] = out_path or (
+                DATA_DIR / "scraped" / f"{site}_{item}.jl"
+            )
             kwargs.setdefault("sort_fields", kwargs["key_col"])
             kwargs.setdefault(
                 "fieldnames_exclude",
@@ -72,12 +77,12 @@ class MergeConfig:
             )
 
         else:
-            kwargs.setdefault("out_path", FEEDS_DIR / site / f"{now_str}-merged.jl")
+            kwargs["out_path"] = out_path or (FEEDS_DIR / site / f"{now_str}-merged.jl")
 
         return cls(**kwargs)
 
     @classmethod
-    def site_defaults(
+    def site_config(
         cls,
         site: str,
         *,
@@ -85,31 +90,29 @@ class MergeConfig:
         **kwargs: Any,
     ) -> MergeConfig:
         if site == "bgg":
-            return cls.bgg_defaults(item=item, **kwargs)
+            return cls.bgg_config(item=item, **kwargs)
 
         if item != "GameItem":
             raise ValueError(f"Unknown item type for site <{site}>: {item}")
 
         if site == "bgg_hotness":
-            return cls.bgg_hotness_defaults(**kwargs)
+            return cls.bgg_hotness_config(**kwargs)
 
-        return cls.global_defaults(site=site, item="GameItem", **kwargs)
+        return cls.with_defaults(site=site, item="GameItem", **kwargs)
 
     @classmethod
-    def bgg_defaults(
+    def bgg_config(
         cls,
         *,
         item: Literal["GameItem", "UserItem", "RatingItem"] = "GameItem",
         clean_results: bool = False,
-        latest_min_days: float | None = None,
         **kwargs: Any,
     ) -> MergeConfig:
         if item == "GameItem":
-            return cls.global_defaults(
+            return cls.with_defaults(
                 site="bgg",
                 item="GameItem",
                 clean_results=clean_results,
-                latest_min_days=latest_min_days,
                 **kwargs,
             )
 
@@ -117,11 +120,10 @@ class MergeConfig:
             kwargs.setdefault("key_col", pl.col("bgg_user_name").str.to_lowercase())
             if clean_results:
                 kwargs.setdefault("fieldnames_exclude", ["published_at", "updated_at"])
-            return cls.global_defaults(
+            return cls.with_defaults(
                 site="bgg",
                 item="UserItem",
                 clean_results=clean_results,
-                latest_min_days=latest_min_days,
                 **kwargs,
             )
 
@@ -132,18 +134,17 @@ class MergeConfig:
             )
             if clean_results:
                 kwargs.setdefault("fieldnames_exclude", ["published_at", "updated_at"])
-            return cls.global_defaults(
+            return cls.with_defaults(
                 site="bgg",
                 item="RatingItem",
                 clean_results=clean_results,
-                latest_min_days=latest_min_days,
                 **kwargs,
             )
 
         raise ValueError(f"Unknown item type: {item}")
 
     @classmethod
-    def bgg_hotness_defaults(
+    def bgg_hotness_config(
         cls,
         *,
         clean_results: bool = False,
@@ -158,6 +159,7 @@ class MergeConfig:
             [pl.col("published_at").str.to_datetime(time_zone="UTC"), "rank"],
         )
         kwargs.setdefault("fieldnames_exclude", None)
+
         if clean_results:
             kwargs.setdefault(
                 "fieldnames_include",
@@ -171,7 +173,8 @@ class MergeConfig:
                     "image_url",
                 ],
             )
-        return cls.global_defaults(
+
+        return cls.with_defaults(
             site="bgg_hotness",
             item="GameItem",
             clean_results=clean_results,
