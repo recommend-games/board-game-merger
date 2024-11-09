@@ -90,6 +90,9 @@ classmethod-decorators = [
     "pydantic.root_validator",
 ]
 
+[tool.ruff.lint.pylint]
+max-statements = 100
+
 [tool.pytest.ini_options]
 addopts = """\
     --cov board_game_merger \

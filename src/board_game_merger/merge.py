@@ -19,6 +19,7 @@ MAX_DISPLAY_ITEMS = 10
 def merge_files(
     *,
     merge_config: MergeConfig,
+    overwrite: bool = False,
     drop_empty: bool = False,
     sort_keys: bool = False,
     progress_bar: bool = False,
@@ -53,6 +54,11 @@ def merge_files(
         f"[{len(in_paths)} paths]" if len(in_paths) > MAX_DISPLAY_ITEMS else in_paths,
         out_path,
     )
+
+    if not overwrite and out_path.exists():
+        LOGGER.warning("Output file already exists, use overwrite to replace it")
+        return
+
     data = pl.scan_ndjson(
         source=in_paths,
         schema=merge_config.schema,

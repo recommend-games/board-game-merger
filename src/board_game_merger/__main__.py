@@ -1,7 +1,6 @@
 import argparse
 import logging
 import sys
-from pathlib import Path
 
 from board_game_merger.config import MergeConfig
 from board_game_merger.merge import merge_files
@@ -13,9 +12,8 @@ def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Merge board game data files")
 
     parser.add_argument(
-        "sites",
-        nargs="+",
-        help="Site(s) to merge data from",
+        "site",
+        help="Site to merge data from",
     )
     parser.add_argument(
         "--item-type",
@@ -79,25 +77,29 @@ def main() -> None:
         stream=sys.stdout,
     )
 
-    for site in args.sites:
-        LOGGER.info("Merging board game data from site <%s>", site)
-
-        merge_config = MergeConfig.site_config(
-            site=site,
-            item=args.item_type,
-            in_paths=args.in_paths,
-            out_path=args.out_path,
-            clean_results=args.clean_results,
-            latest_min_days=args.latest_min_days,
+    merge_configs = (
+        tuple(
+            MergeConfig.all_sites_config(
+                clean_results=args.clean_results, latest_min_days=args.latest_min_days
+            )
         )
+        if args.site == "all"
+        else (
+            MergeConfig.site_config(
+                site=args.site,
+                item=args.item_type,
+                in_paths=args.in_paths,
+                out_path=args.out_path,
+                clean_results=args.clean_results,
+                latest_min_days=args.latest_min_days,
+            ),
+        )
+    )
 
-        out_path = Path(merge_config.out_path).resolve()
-        if out_path.exists() and not args.overwrite:
-            LOGGER.warning("Output file <%s> exists, skipping", out_path)
-            continue
-
+    for merge_config in merge_configs:
         merge_files(
             merge_config=merge_config,
+            overwrite=args.overwrite,
             drop_empty=True,
             sort_keys=bool(args.clean_results),
             progress_bar=bool(args.progress_bar),
