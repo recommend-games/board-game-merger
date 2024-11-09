@@ -10,6 +10,8 @@ import polars as pl
 from board_game_merger.schemas import ITEM_TYPE_SCHEMA
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from polars._typing import IntoExpr
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent.parent
@@ -184,3 +186,26 @@ class MergeConfig:
             clean_results=clean_results,
             **kwargs,
         )
+
+    @classmethod
+    def all_sites_config(
+        cls,
+        *,
+        sites: list[str] | None = None,
+        **kwargs: Any,
+    ) -> Generator[MergeConfig, None, None]:
+        sites = sites or [
+            "bgg_hotness",
+            "dbpedia",
+            "luding",
+            "spielen",
+            "wikidata",
+            "bgg",
+        ]
+        for site in sites:
+            if site == "bgg":
+                yield cls.site_config(site=site, item="GameItem", **kwargs)
+                yield cls.site_config(site=site, item="UserItem", **kwargs)
+                yield cls.site_config(site=site, item="RatingItem", **kwargs)
+            else:
+                yield cls.site_config(site=site, item="GameItem", **kwargs)
