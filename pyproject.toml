@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "board-game-merger"
-version = "0.0.1"
+version = "0.1.0"
 description = "Merging board game data"
 authors = [
     "Markus Shepherd <markus@recommend.games>",
