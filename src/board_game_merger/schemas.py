@@ -63,7 +63,7 @@ GAME_ITEM_SCHEMA = pl.Schema(
         "mechanic": pl.List(pl.String),
         "cooperative": pl.Boolean,
         "compilation": pl.Boolean,
-        # "compilation_of": pl.List(pl.Int64),
+        "compilation_of": pl.List(pl.Int64),
         "family": pl.List(pl.String),
         "expansion": pl.List(pl.String),
         "implementation": pl.List(pl.Int64),
